@@ -16,5 +16,30 @@ module PgRls
 
       send(:"#{attribute}=", klass_name.constantize.first)
     end
+
+    def tenant=(tenant)
+      @attributes[:tenant_history] ||= []
+      @attributes[:tenant_history] << @attributes[:tenant] if @attributes[:tenant].present?
+      @attributes[:tenant] = tenant
+      tenant&.set_rls if Rails.env.test?
+      tenant
+    end
+
+    def reset
+      history = @attributes[:tenant_history] || []
+
+      super
+
+      @attributes[:tenant_history] = history
+
+      if history.any?
+        @attributes[:tenant] = history.last
+        @attributes[:tenant]&.set_rls if Rails.env.test?
+      else
+        @attributes[:tenant]&.reset_rls if Rails.env.test?
+      end
+
+      @attributes[:tenant]
+    end
   end
 end
